@@ -1,18 +1,47 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 import ScrollTrigger from "gsap/ScrollTrigger";
 import "./CardCarousel.css";
 
 function CardCarousel() {
+    const [cards, setCards] = useState([]);
+    const [selectedCardId, setSelectedCardId] = useState(null); // State to track the selected card
+    const cardRefs = useRef([]);
+
     useEffect(() => {
+        // Fetch data from the API
+        const fetchData = async () => {
+            try {
+                const response = await fetch(process.env.REACT_APP_API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        subject: "Data Structures & Algorithms",
+                    }),
+                });
+                const data = await response.json();
+                setCards(data);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    useEffect(() => {
+        if (cards.length === 0) return; // Ensure there's data before initializing GSAP
+
         gsap.registerPlugin(ScrollTrigger);
 
         let iteration = 0;
 
         const spacing = 0.1;
         const snap = gsap.utils.snap(spacing);
-        const cards = gsap.utils.toArray(".cards li");
-        const seamlessLoop = buildSeamlessLoop(cards, spacing);
+        const cardElements = gsap.utils.toArray(".cards li");
+        const seamlessLoop = buildSeamlessLoop(cardElements, spacing);
         const scrub = gsap.to(seamlessLoop, {
             totalTime: 0,
             duration: 0.5,
@@ -163,13 +192,33 @@ function CardCarousel() {
             ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
             gsap.killTweensOf(seamlessLoop);
         };
-    }, []);
+    }, [cards]); // Re-run the effect when cards are updated
+
+    const handleCardClick = (cardId) => {
+        if (selectedCardId === cardId) {
+            setSelectedCardId(null);
+            return;
+        }
+        setSelectedCardId(cardId);
+    };
 
     return (
         <div className="gallery">
             <ul className="cards">
-                {[...Array(31).keys()].map((i) => (
-                    <li key={i}>{i}</li>
+                {cards.map((card) => (
+                    <li
+                        key={card.id}
+                        onClick={() => handleCardClick(card.id)}
+                        ref={(el) => (cardRefs.current[card.id] = el)}
+                    >
+                        <h3>
+                            {selectedCardId === card.id ? "Answer" : "Question"}
+                        </h3>
+                        <br></br>
+                        {selectedCardId === card.id
+                            ? card.answer
+                            : card.question}
+                    </li>
                 ))}
             </ul>
         </div>
